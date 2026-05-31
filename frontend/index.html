@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>城市级光伏潜力评估系统 - Solar Potential Assessment</title>
+    
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+        <header id="main-header">
+            <div class="header-content">
+                <div class="logo">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="4"/>
+                        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                    </svg>
+                    <h1>城市光伏潜力评估系统</h1>
+                </div>
+                <div class="header-controls">
+                    <span id="api-status" class="status-indicator status-disconnected">API: 未连接</span>
+                    <button id="btn-reload-buildings" class="btn btn-secondary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <polyline points="1 20 1 14 7 14"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                        刷新建筑
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main id="main-content">
+            <aside id="sidebar">
+                <div class="sidebar-section">
+                    <h2>建筑列表</h2>
+                    <div id="building-list" class="building-list">
+                    </div>
+                </div>
+
+                <div id="building-info" class="sidebar-section" style="display: none;">
+                    <h2>建筑信息</h2>
+                    <div id="building-details">
+                    </div>
+                </div>
+
+                <div id="analysis-results" class="sidebar-section" style="display: none;">
+                    <h2>分析结果</h2>
+                    <div id="analysis-details">
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h2>图层控制</h2>
+                    <div class="layer-controls">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="toggle-buildings" checked>
+                            <span>显示建筑</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="toggle-roofs" checked>
+                            <span>显示屋顶</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="toggle-heatmap" checked>
+                            <span>显示辐射热力图</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="toggle-shadow-heatmap" checked>
+                            <span>显示阴影热力图</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="toggle-pv-layout" checked>
+                            <span>显示光伏板布局</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h2>阴影分析控制</h2>
+                    <div class="shadow-controls">
+                        <label class="select-label">
+                            <span>分析日期:</span>
+                            <select id="shadow-day-of-year">
+                                <option value="80">春分 (3月21日)</option>
+                                <option value="172" selected>夏至 (6月21日)</option>
+                                <option value="266">秋分 (9月23日)</option>
+                                <option value="355">冬至 (12月21日)</option>
+                            </select>
+                        </label>
+                        <label class="select-label">
+                            <span>显示时刻:</span>
+                            <select id="shadow-hour">
+                                <option value="" selected>峰值平均</option>
+                                <option value="8">08:00</option>
+                                <option value="10">10:00</option>
+                                <option value="12">12:00</option>
+                                <option value="14">14:00</option>
+                                <option value="16">16:00</option>
+                            </select>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enable-shadow-calc" checked>
+                            <span>启用阴影计算</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h2>操作指南</h2>
+                    <div class="instructions">
+                        <p><strong>左键点击</strong> - 选择建筑屋顶</p>
+                        <p><strong>右键/Esc</strong> - 取消选择</p>
+                        <p><strong>Enter</strong> - 计算选中建筑</p>
+                        <p><strong>鼠标滚轮</strong> - 缩放视图</p>
+                        <p><strong>鼠标拖拽</strong> - 旋转视角</p>
+                    </div>
+                </div>
+            </aside>
+
+            <div id="map-container">
+                <div id="cesium-container"></div>
+                
+                <div id="action-panel" class="floating-panel">
+                    <button id="btn-calculate" class="btn btn-primary" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                        计算太阳辐射
+                    </button>
+                    <button id="btn-clear" class="btn btn-secondary" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
+                            <path d="M10 11v6M14 11v6"/>
+                        </svg>
+                        清除结果
+                    </button>
+                </div>
+
+                <div id="stats-panel" class="floating-panel">
+                    <h3>统计概览</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">建筑总数</span>
+                            <span id="stat-buildings" class="stat-value">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">已分析</span>
+                            <span id="stat-analyzed" class="stat-value">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">总屋顶面积</span>
+                            <span id="stat-area" class="stat-value">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">预计年发电量</span>
+                            <span id="stat-potential" class="stat-value">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/apiClient.js"></script>
+    <script src="js/cesiumRenderer.js"></script>
+    <script src="js/roofSelection.js"></script>
+    <script src="js/heatmapGenerator.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

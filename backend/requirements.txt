@@ -1,0 +1,8 @@
+flask==3.0.0
+flask-cors==4.0.0
+pvlib==0.10.4
+numpy==1.26.2
+scipy==1.11.4
+pandas==2.1.4
+shapely==2.0.2
+geojson==3.1.0
